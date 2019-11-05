@@ -40,8 +40,7 @@ python plot_accuracies_losses.py
 ```
 
 ## Acknowledgment
-- Special Thanks to (DenishDsh)[https://github.com/DenisDsh], who has made a reliable implementation of Coral[1] public.
-
+* Special Thanks to [DenishDsh](https://github.com/DenisDsh), who has made a reliable implementation of [Coral][1] public.
 [0]: https://people.eecs.berkeley.edu/~jhoffman/domainadapt/#datasets_code
 [1]: https://github.com/VisionLearningGroup/CORAL
 
