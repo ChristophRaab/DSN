@@ -12,7 +12,7 @@ wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download
 tar -xzf office31.tar.gz
 ```
 
-- Move the three folders composing the dataset in a new directory "dataset":
+- Move the three folders composing the dataset in a new directory "data":
 ```
 mkdir data
 mv amazon dslr webcam ./dataset
