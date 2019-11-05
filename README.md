@@ -1,15 +1,8 @@
-# Deep CORAL Implementation in PyTorch
+# Deep Spectral Network Pytorch implementation
 
-This is a PyTorch implementation of the Unsupervised Domain Adaptation method proposed in the paper [Deep CORAL: Correlation Alignment for Deep Domain Adaptation. Baochen Sun and Kate Saenko (ECCV 2016)][0].
+The repository is part of the submission Domain Invariant Representations with Deep Spectral Alignment for ESANN 2020.
+This is a PyTorch implementation of the unsupervised deep domain adaptation method Deep Spectral Networks, which employs the spectral loss in the output layer of the Alexnet architecture.
 
-Deep CORAL aligns the second-order statistics of source and target distributions by minimizing a differentiable loss
-function (CORAL loss) that corresponds to the difference between source and target correlations.
-
-The loss is computed batch-wise and minimized jointly with the classification loss. Therefore the training is end-to-end.
-
-This implementation exploits the same hyper-parameter specified in the paper.
-The CORAL loss is computed from the scores of the last fully connected layer. 
-However, as specified by the authors, it could be can be easily integrated into different layers or network architectures.
 
 
 ### Experimental Results 
@@ -46,7 +39,7 @@ mv amazon dslr webcam ./data
 
 - Train with default parameters:
 ```
-python train.py
+python demo.py
 ```
 After each training epoch, the model will be evaluated on source and target and the respective accuracies printed.
 source and target accuracies, classification loss and CORAL loss are saved in `./log.pth`
@@ -56,6 +49,10 @@ source and target accuracies, classification loss and CORAL loss are saved in `.
 python plot_accuracies_losses.py
 ```
 
+- Construct Evaluation Results:
+```
+python plot_accuracies_losses.py
+```
 
 ## Acknowledgment
 
