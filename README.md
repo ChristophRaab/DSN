@@ -1,26 +1,7 @@
 # Deep Spectral Network Pytorch implementation
 
 The repository is part of the submission Domain Invariant Representations with Deep Spectral Alignment for ESANN 2020.
-This is a PyTorch implementation of the unsupervised deep domain adaptation method Deep Spectral Networks, which employs the spectral loss in the output layer of the Alexnet architecture.
-
-
-
-### Experimental Results 
-The method is evaluated on a standard domain adaptation benchmark: [the Office dataset][1].
-The Office dataset contains 31 object categories from an office environment in 3 image domains: Amazon, DSLR, and Webcam.
-
-To provide results comparable to the paper, have been considered:
-- Source Domain: *Amazon*  
-- Target Domain: *Webcam*
-
-![Soft cross-entropy loss](./plots.png)
-
-**(a)** CORAL loss significantly improves performances on target domain
- while maintaining almost the same accuracy on source domain.  
-**(b)** Classification loss and CORAL loss while optimizing for both domain invariance and class discrimination.  
-**(c)** CORAL distance without adaptation  
-**(d)** Comparison between adaptation and no adaptation (lambda = 0) classification loss. Without domain adaptation the classification loss decreases slightly faster.
-
+The proposed unsupervised deep domain adaptation method Deep Spectral Network is implemented in pytorch. The Deep Spectral Networks employs the spectral loss in the output layer of the Alexnet architecture.
 
 ## Training and Evaluation
 
@@ -31,10 +12,10 @@ wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download
 tar -xzf office31.tar.gz
 ```
 
-- Move the three folders composing the dataset in a new directory "data":
+- Move the three folders composing the dataset in a new directory "dataset":
 ```
 mkdir data
-mv amazon dslr webcam ./data
+mv amazon dslr webcam ./dataset
 ```
 
 - Train with default parameters:
@@ -42,7 +23,7 @@ mv amazon dslr webcam ./data
 python demo.py
 ```
 After each training epoch, the model will be evaluated on source and target and the respective accuracies printed.
-source and target accuracies, classification loss and CORAL loss are saved in `./log.pth`
+source and target accuracies, classification loss and Spectral loss are saved in `./log.pth`
 
 - Construct plots:
 ```
@@ -51,20 +32,17 @@ python plot_accuracies_losses.py
 
 - Construct Evaluation Results:
 ```
-python plot_accuracies_losses.py
+python study.py
+```
+For reproducing the results in the exerpimental part of the paper. After study.py is finished run merge the results must be merged:
+```
+python merge_results.py
 ```
 
 ## Acknowledgment
+- Special Thanks to (DenishDsh)[https://github.com/DenisDsh], who has made a reliable implementation of Coral[1] public.
 
-
-
-- Official Caffe implementation of Deep CORAL: https://github.com/VisionLearningGroup/CORAL
-- Tracker to save and visualize accuracies and losses during training: https://github.com/Cyanogenoid/pytorch-vqa
-
-
-
-
-[0]: https://arxiv.org/abs/1607.01719
-[1]: https://people.eecs.berkeley.edu/~jhoffman/domainadapt/#datasets_code
+[0]: https://people.eecs.berkeley.edu/~jhoffman/domainadapt/#datasets_code
+[1]: https://github.com/VisionLearningGroup/CORAL
 
 
