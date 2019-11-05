@@ -25,11 +25,6 @@ python demo.py
 After each training epoch, the model will be evaluated on source and target and the respective accuracies printed.
 source and target accuracies, classification loss and Spectral loss are saved in `./log.pth`
 
-- Construct plots:
-```
-python plot_accuracies_losses.py
-```
-
 - Construct Evaluation Results:
 ```
 python study.py
@@ -37,6 +32,11 @@ python study.py
 For reproducing the results in the exerpimental part of the paper. After study.py is finished run merge the results must be merged:
 ```
 python merge_results.py
+```
+
+- Construct plots of convergence behaviour:
+```
+python plot_accuracies_losses.py
 ```
 
 ## Acknowledgment
