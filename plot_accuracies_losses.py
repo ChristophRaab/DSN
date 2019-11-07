@@ -5,8 +5,8 @@ import numpy as np
 
 
 def main():
-    path_adapt = './logs/log_adaptation.pth'
-    path_no_adapt = './logs/log_no_adaptation.pth'
+    path_adapt = 'log.pth'
+    path_no_adapt = 'log.pth'
 
     # Load logs
     log_adapt = torch.load(path_adapt)
@@ -33,7 +33,7 @@ def main():
     adapt['source_accuracy'] = np.insert(adapt['source_accuracy'], 0, 0)
     no_adapt['source_accuracy'] = np.insert(no_adapt['source_accuracy'], 0, 0)
 
-    plt.gca().set_color_cycle(['blue', 'green', 'red', 'm'])
+    # plt.gca().set_color_cycle(['blue', 'green', 'red', 'm'])
 
     axes = plt.gca()
     axes.set_ylim([0, 1.1])
@@ -53,7 +53,7 @@ def main():
     fig_acc.savefig('accuracies.pdf', dpi=1000)
 
     # Classification loss and CORAL loss for training w/ CORAL loss
-    plt.gca().set_color_cycle(['red', 'blue'])
+    # plt.gca().set_color_cycle(['red', 'blue'])
 
     axes = plt.gca()
     axes.set_ylim([0, 0.5])
@@ -69,7 +69,7 @@ def main():
     fig_acc.savefig('losses_adapt.pdf', dpi=1000)
 
     # CORAL distance for training w/o CORAL loss (lambda = 0)
-    plt.gca().set_color_cycle(['blue'])
+    # plt.gca().set_color_cycle(['blue'])
     l7, = plt.plot(no_adapt['coral_loss'], label="distance w/o coral loss", marker='.')
 
     plt.legend(handles=[l7], loc=2)
@@ -80,7 +80,7 @@ def main():
     fig_acc.savefig('coral_loss_no_adapt.pdf', dpi=1000)
 
     # Classification loss and CORAL loss for training w/ CORAL loss
-    plt.gca().set_color_cycle(['red', 'blue'])
+    # plt.gca().set_color_cycle(['red', 'blue'])
 
     axes = plt.gca()
     axes.set_ylim([0, 0.5])

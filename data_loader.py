@@ -29,7 +29,7 @@ def get_loader(name_dataset, batch_size, train=True):
                                  std=mean_std[name_dataset]['std'])
         ])
 
-    dataset = datasets.ImageFolder(root='./data/%s/images' % name_dataset,
+    dataset = datasets.ImageFolder(root='/home/bix/Christoph/deep_transfer_learning/datasets/domain_adaptation/images/Office-31/'+ name_dataset,
                                    transform=data_transform)
     dataset_loader = torch.utils.data.DataLoader(dataset,
                                                  batch_size=batch_size, shuffle=train,
