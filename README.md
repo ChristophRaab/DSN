@@ -5,7 +5,7 @@ The proposed unsupervised deep domain adaptation method Deep Spectral Network is
 
 ## Training and Evaluation
 
-- Download and extract the (Office dataset)[https://people.eecs.berkeley.edu/~jhoffman/domainadapt/#datasets_code]
+- Download and extract the [Office dataset](https://people.eecs.berkeley.edu/~jhoffman/domainadapt/#datasets_code)
 
 ```
 wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=0B4IapRTv9pJ1WGZVd1VDMmhwdlE' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=0B4IapRTv9pJ1WGZVd1VDMmhwdlE" -O office31.tar.gz && rm -rf /tmp/cookies.txt
