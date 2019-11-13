@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from tqdm import tqdm
 from torchvision.models import alexnet
 import torch
 import torch.nn as nn
@@ -12,7 +11,7 @@ from data_loader import get_loader
 from utils import accuracy, Tracker
 from loss import *
 import numpy as np
-
+from resnet import Resnet
 
 def train(model, optimizer, source_loader, target_loader, tracker, args, epoch=0):
 
@@ -105,25 +104,29 @@ def init_model(args):
 
     # ~ Paper : "We initialized the other layers with the parameters pre-trained on ImageNet"
     # check https://github.com/pytorch/vision/blob/master/torchvision/models/alexnet.py
-    model = alexnet(pretrained=True)
+    model = Resnet(31)
     # ~ Paper : The dimension of last fully connected layer (fc8) was set to the number of categories (31)
-    model.classifier[6] = nn.Linear(4096, n_classes)
-    # ~ Paper : and initialized with N(0, 0.005)
-    torch.nn.init.normal_(model.classifier[6].weight, mean=0, std=5e-3)
-
-    # Initialize bias to small constant number (http://cs231n.github.io/neural-networks-2/#init)
-    model.classifier[6].bias.data.fill_(0.01)
+    # model.classifier[6] = nn.Linear(4096, n_classes)
+    # # ~ Paper : and initialized with N(0, 0.005)
+    # torch.nn.init.normal_(model.classifier[6].weight, mean=0, std=5e-3)
+    #
+    # # Initialize bias to small constant number (http://cs231n.github.io/neural-networks-2/#init)
+    # model.classifier[6].bias.data.fill_(0.01)
 
     model = model.to(device=args.device)
 
     # ~ Paper : "The learning rate of fc8 is set to 10 times the other layers as it was training from scratch."
+    # optimizer = torch.optim.SGD([
+    #     # {'params': model.features.parameters()},
+    #     # {'params': model.classifier[:6].parameters()},
+    #     # # fc8 -> 7th element (index 6) in the Sequential block
+    #     {'params': model.classifier[6].parameters(), 'lr': 10 * args.lr}
+    # ], lr=args.lr, momentum=args.momentum)  # if not specified, the default lr is used
     optimizer = torch.optim.SGD([
-        {'params': model.features.parameters()},
-        {'params': model.classifier[:6].parameters()},
-        # fc8 -> 7th element (index 6) in the Sequential block
-        {'params': model.classifier[6].parameters(), 'lr': 10 * args.lr}
-    ], lr=args.lr, momentum=args.momentum)  # if not specified, the default lr is used
-
+        {'params': model.base_network.parameters()},
+        # {'params': model.bottleneck_layer.parameters(), 'lr': 10 * CFG['lr']},
+        {'params': model.classifier_layer.parameters(), 'lr': 10 * args.lr},
+    ], lr=args.lr, momentum=args.momentum, weight_decay= 5e-4)
     tracker = Tracker()
 
     for i in range(args.epochs):
@@ -144,7 +147,7 @@ def main():
     parser = argparse.ArgumentParser(description='Train - Evaluate DeepCORAL model')
     parser.add_argument('--disable_cuda', action='store_true',
                         help='Disable CUDA')
-    parser.add_argument('--epochs', type=int, default=50,
+    parser.add_argument('--epochs', type=int, default=200,
                         help='Number of total epochs to run')
     parser.add_argument('--batch_size', type=int, default=128,
                         help='Batch size')
@@ -173,12 +176,12 @@ def main():
     else:
         args.device = torch.device('cpu')
 
-    args.device = torch.device('cuda:1')
+    args.device = torch.device('cuda:0')
     # args.device = torch.device('cuda:1')
 
     loss = ["sl","coral"]
-    loss = ["jan"]
-   # loss = ["dan","no_da"]
+    loss = ["ddc_mmd","jan"]
+    loss = ["coral"]
 
     print(args.device)
     datasets = ["amazon","webcam","dslr"]

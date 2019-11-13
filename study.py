@@ -121,7 +121,7 @@ def init_model(args):
         {'params': model.classifier[:6].parameters()},
         # fc8 -> 7th element (index 6) in the Sequential block
         {'params': model.classifier[6].parameters(), 'lr': 10 * args.lr}
-    ], lr=args.lr, momentum=args.momentum)  # if not specified, the default lr is used
+    ], lr=args.lr, momentum=args.momentum,weight_decay=args.decay)  # if not specified, the default lr is used
 
     tracker = Tracker()
 
@@ -175,9 +175,7 @@ def main():
     args.device = torch.device('cuda:0')
     # args.device = torch.device('cuda:1')
 
-    loss = ["sl","coral"]
-    loss = ["ddc_mmd","jan"]
-    loss = ["no_da"]
+    loss = ["no_da","ddc_mmd","dan","jan","sl","coral"]
 
     print(args.device)
     datasets = ["amazon","webcam","dslr"]

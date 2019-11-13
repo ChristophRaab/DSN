@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from torchvision.models import alexnet
 import torch
 import torch.nn as nn
@@ -5,9 +6,11 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from tqdm import tqdm
 import argparse
+import pandas as pd
 from data_loader import get_loader
 from utils import accuracy, Tracker
-from loss import DAN,CORAL,JAN,DDC_MMD,SL
+from loss import *
+import numpy as np
 
 
 def train(model, optimizer, source_loader, target_loader, tracker, args, epoch=0):
@@ -15,9 +18,9 @@ def train(model, optimizer, source_loader, target_loader, tracker, args, epoch=0
     model.train()
     tracker_class, tracker_params = tracker.MovingMeanMonitor, {'momentum': 0.99}
 
-    # Trackers to monitor classification and CORAL loss
+    # Trackers to monitor classification and DA loss
     classification_loss_tracker = tracker.track('classification_loss', tracker_class(**tracker_params))
-    coral_loss_tracker = tracker.track('CORAL_loss', tracker_class(**tracker_params))
+    da_loss_tracker = tracker.track(args.da_loss+'_Loss', tracker_class(**tracker_params))
 
     min_n_batches = min(len(source_loader), len(target_loader))
 
@@ -29,8 +32,8 @@ def train(model, optimizer, source_loader, target_loader, tracker, args, epoch=0
         target_data, _ = next(iter(target_loader))  # Unsupervised Domain Adaptation
 
         source_data, source_label = Variable(source_data.to(device=args.device)), Variable(source_label.to(device=args.device))
-        target_data = Variable(target_data.to(device=args.device))
-
+        # target_data = Variable(target_data.to(device=args.device))
+        target_data = target_data.to(device=args.device)
         optimizer.zero_grad()
 
         out_source = model(source_data)
@@ -40,17 +43,30 @@ def train(model, optimizer, source_loader, target_loader, tracker, args, epoch=0
 
         # Compute Domain Adaptation loss
 
-        coral_loss = SL(out_source, out_target)
-        composite_loss = classification_loss + args.lambda_coral * coral_loss
+        if args.da_loss =="sl":
+            da_loss = SL(out_source, out_target)
+        elif args.da_loss =="coral":
+            da_loss = CORAL(out_source, out_target)
+        elif args.da_loss =="ddc_mmd":
+            da_loss = DDC_MMD(out_source, out_target)
+        elif args.da_loss =="dan":
+            da_loss = DAN(out_source, out_target)
+        elif args.da_loss =="jan":
+            da_loss = JAN([out_source],[out_target])
+        else:
+            da_loss = Variable(torch.tensor([0.0]).to(device=args.device),requires_grad=False)
+
+
+        composite_loss = classification_loss + args.lambda_da * da_loss
 
         composite_loss.backward()
         optimizer.step()
 
         classification_loss_tracker.append(classification_loss.item())
-        coral_loss_tracker.append(coral_loss.item())
+        da_loss_tracker.append(da_loss.item())
         fmt = '{:.4f}'.format
         tq.set_postfix(classification_loss=fmt(classification_loss_tracker.mean.value),
-                       coral_loss=fmt(coral_loss_tracker.mean.value))
+                       da_loss=fmt(da_loss_tracker.mean.value))
 
 
 def evaluate(model, data_loader, dataset_name, tracker, args, epoch=0):
@@ -74,7 +90,50 @@ def evaluate(model, data_loader, dataset_name, tracker, args, epoch=0):
             acc_tracker.append(sum(accuracies)/len(accuracies))
             fmt = '{:.4f}'.format
             loader.set_postfix(accuracy=fmt(acc_tracker.mean.value))
+        return acc_tracker.mean.value
 
+
+def init_model(args):
+    source_train_loader = get_loader(name_dataset=args.source, batch_size=args.batch_size, train=True)
+    target_train_loader = get_loader(name_dataset=args.target, batch_size=args.batch_size, train=True)
+
+    source_evaluate_loader = get_loader(name_dataset=args.source, batch_size=args.batch_size, train=False)
+    target_evaluate_loader = get_loader(name_dataset=args.target, batch_size=args.batch_size, train=False)
+
+    n_classes = len(source_train_loader.dataset.classes)
+
+    # ~ Paper : "We initialized the other layers with the parameters pre-trained on ImageNet"
+    # check https://github.com/pytorch/vision/blob/master/torchvision/models/alexnet.py
+    model = alexnet(pretrained=True)
+    # ~ Paper : The dimension of last fully connected layer (fc8) was set to the number of categories (31)
+    model.classifier[6] = nn.Linear(4096, n_classes)
+    # ~ Paper : and initialized with N(0, 0.005)
+    torch.nn.init.normal_(model.classifier[6].weight, mean=0, std=5e-3)
+
+    # Initialize bias to small constant number (http://cs231n.github.io/neural-networks-2/#init)
+    model.classifier[6].bias.data.fill_(0.01)
+
+    model = model.to(device=args.device)
+
+    # ~ Paper : "The learning rate of fc8 is set to 10 times the other layers as it was training from scratch."
+    optimizer = torch.optim.SGD([
+        {'params': model.features.parameters()},
+        {'params': model.classifier[:6].parameters()},
+        # fc8 -> 7th element (index 6) in the Sequential block
+        {'params': model.classifier[6].parameters(), 'lr': 10 * args.lr}
+    ], lr=args.lr, momentum=args.momentum,weight_decay=args.decay)  # if not specified, the default lr is used
+
+    tracker = Tracker()
+
+    for i in range(args.epochs):
+        train(model, optimizer, source_train_loader, target_train_loader, tracker, args, i)
+        evaluate(model, source_evaluate_loader, 'source', tracker, args, i)
+        evaluate(model, target_evaluate_loader, 'target', tracker, args, i)
+
+    # Save logged classification loss, coral loss, source accuracy, target accuracy
+    torch.save(tracker.to_dict(), args.da_loss+"_log.pth")
+    print("Final Evaluation\r")
+    return evaluate(model, target_evaluate_loader, 'target', tracker, args, i)
 
 def main():
 
@@ -94,60 +153,34 @@ def main():
                         help='Decay of the learning rate')
     parser.add_argument('--momentum', default=0.9,
                         help="Optimizer's momentum")
-    parser.add_argument('--lambda_coral', type=float, default=0.5,
+    parser.add_argument('--da_loss', default="sl",
+                        help="Domain Adaptation Loss")
+    parser.add_argument('--lambda_da', type=float, default=1,
                         help="Weight that trades off the adaptation with "
                              "classification accuracy on the source domain")
     parser.add_argument('--source', default='amazon',
                         help="Source Domain (dataset)")
     parser.add_argument('--target', default='webcam',
                         help="Target Domain (dataset)")
-
+    parser.add_argument('--study_size', default=5,
+                        help="Number of Evaluation Cycles")
     args = parser.parse_args()
     args.device = None
-    args.lambda_coral = 0.1
+
     if not args.disable_cuda and torch.cuda.is_available():
         args.device = torch.device('cuda')
     else:
         args.device = torch.device('cpu')
 
-    source_train_loader = get_loader(name_dataset=args.source, batch_size=args.batch_size, train=True)
-    target_train_loader = get_loader(name_dataset=args.target, batch_size=args.batch_size, train=True)
+    args.device = torch.device('cuda:0')
+    # args.device = torch.device('cuda:1')
 
-    source_evaluate_loader = get_loader(name_dataset=args.source, batch_size=args.batch_size, train=False)
-    target_evaluate_loader = get_loader(name_dataset=args.target, batch_size=args.batch_size, train=False)
+    loss = ["no_da","ddc_mmd","dan","jan","sl","coral"]
 
-    n_classes = len(source_train_loader.dataset.classes)
+    print(args.device)
+    datasets = ["amazon","webcam","dslr"]
 
-    # ~ Paper : "We initialized the other layers with the parameters pre-trained on ImageNet"
-    # check https://github.com/pytorch/vision/blob/master/torchvision/models/alexnet.py
-    # model = alexnet(pretrained=True)
-    # ~ Paper : The dimension of last fully connected layer (fc8) was set to the number of categories (31)
-    from torchvision.models import resnet50
-    model = resnet50(pretrained=True)
-    model.fc = nn.Linear(model.fc.in_features, n_classes)
-    # ~ Paper : and initialized with N(0, 0.005)
-    torch.nn.init.normal_(model.fc.weight, mean=0, std=5e-3)
-
-    # Initialize bias to small constant number (http://cs231n.github.io/neural-networks-2/#init)
-    model.fc.bias.data.fill_(0.01)
-
-    model = model.to(device=args.device)
-
-    # ~ Paper : "The learning rate of fc8 is set to 10 times the other layers as it was training from scratch."
-    optimizer = torch.optim.SGD([ {'params': model.parameters(),'lr': args.lr}
-        # fc8 -> 7th element (index 6) in the Sequential block
-    ], lr=args.lr, momentum=args.momentum)  # if not specified, the default lr is used
-
-    tracker = Tracker()
-
-    for i in range(args.epochs):
-        train(model, optimizer, source_train_loader, target_train_loader, tracker, args, i)
-        evaluate(model, source_evaluate_loader, 'source', tracker, args, i)
-        evaluate(model, target_evaluate_loader, 'target', tracker, args, i)
-
-    # Save logged classification loss, coral loss, source accuracy, target accuracy
-    torch.save(tracker.to_dict(), "log.pth")
-
+    init_model(args)
 
 if __name__ == '__main__':
     main()
