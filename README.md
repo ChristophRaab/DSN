@@ -1,6 +1,6 @@
 # Deep Spectral Network Pytorch implementation
 
-The repository is part of the submission Domain Invariant Representations with Deep Spectral Alignment for ESANN 2020.
+Code to the Paper Domain Invariant Representations with Deep Spectral Alignment presented at ESANN 2020.
 The proposed unsupervised deep domain adaptation method Deep Spectral Network is implemented in pytorch. The Deep Spectral Networks employs the spectral loss in the output layer of the Alexnet architecture.
 
 ## Training and Evaluation
